@@ -171,15 +171,35 @@ function ChatterBox() {
   const messages = threads[activeId] ?? [];
   const count = useMemo(() => messages.length, [messages]);
 
+  const replyFor = (text: string): string => {
+    const t = text.toLowerCase().trim();
+    if (/\b(how are you|how's it going|how are u|hru|how r u)\b/.test(t)) return "I'm good, thanks for asking! How about you?";
+    if (/\b(hi|hello|hey|yo|hola)\b/.test(t)) return "Hey! Good to hear from you.";
+    if (/\b(good morning|gm)\b/.test(t)) return "Good morning! Hope your day's off to a great start.";
+    if (/\b(good night|gn|goodnight)\b/.test(t)) return "Good night! Sleep well.";
+    if (/\b(bye|goodbye|see ya|cya|later)\b/.test(t)) return "Catch you later!";
+    if (/\b(thanks|thank you|ty|thx)\b/.test(t)) return "Anytime!";
+    if (/\b(love you|ily)\b/.test(t)) return "Aww, love you too ❤️";
+    if (/\b(what'?s up|whats up|wassup|sup|wyd)\b/.test(t)) return "Not much — just hanging out. You?";
+    if (/\b(who are you|what are you)\b/.test(t)) return "I'm your ChatterBox demo buddy.";
+    if (/\b(your name|who is this)\b/.test(t)) return `It's ${active.name} — at least in this demo.`;
+    if (/\b(where are you|wru)\b/.test(t)) return "Right here in your browser.";
+    if (/\b(ok|okay|cool|nice|great|awesome)\b/.test(t)) return "👍";
+    if (/\b(lol|haha|lmao)\b/.test(t)) return "😄";
+    if (/\b(sad|tired|sick|bad)\b/.test(t)) return "Sorry to hear that. Hope things get better soon.";
+    if (/\bhelp\b/.test(t)) return "Sure — what do you need help with?";
+    if (/\?\s*$/.test(text.trim())) return "Hmm, good question — let me think about that.";
+    return "Got it. Tell me more?";
+  };
+
   const send = () => {
     const text = draft.trim();
     if (!text) return;
     setThreads(p => ({ ...p, [activeId]: [...(p[activeId] ?? []), { id: uid(), text, who: "me", ts: Date.now() }] }));
     setDraft("");
+    const reply = replyFor(text);
     setTimeout(() => {
-      const replies = ["Noted.", "Copy that.", "Tell me more.", "On it.", "Understood — sending now.", "Good call."];
-      const r = replies[Math.floor(Math.random() * replies.length)];
-      setThreads(p => ({ ...p, [activeId]: [...(p[activeId] ?? []), { id: uid(), text: r, who: "them", ts: Date.now() }] }));
+      setThreads(p => ({ ...p, [activeId]: [...(p[activeId] ?? []), { id: uid(), text: reply, who: "them", ts: Date.now() }] }));
     }, 700);
   };
 
