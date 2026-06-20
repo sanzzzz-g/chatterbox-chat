@@ -171,36 +171,36 @@ function ChatterBox() {
   const messages = threads[activeId] ?? [];
   const count = useMemo(() => messages.length, [messages]);
 
-  const replyFor = (text: string): string => {
-    const t = text.toLowerCase().trim();
-    if (/\b(how are you|how's it going|how are u|hru|how r u)\b/.test(t)) return "I'm good, thanks for asking! How about you?";
-    if (/\b(hi|hello|hey|yo|hola)\b/.test(t)) return "Hey! Good to hear from you.";
-    if (/\b(good morning|gm)\b/.test(t)) return "Good morning! Hope your day's off to a great start.";
-    if (/\b(good night|gn|goodnight)\b/.test(t)) return "Good night! Sleep well.";
-    if (/\b(bye|goodbye|see ya|cya|later)\b/.test(t)) return "Catch you later!";
-    if (/\b(thanks|thank you|ty|thx)\b/.test(t)) return "Anytime!";
-    if (/\b(love you|ily)\b/.test(t)) return "Aww, love you too ❤️";
-    if (/\b(what'?s up|whats up|wassup|sup|wyd)\b/.test(t)) return "Not much — just hanging out. You?";
-    if (/\b(who are you|what are you)\b/.test(t)) return "I'm your ChatterBox demo buddy.";
-    if (/\b(your name|who is this)\b/.test(t)) return `It's ${active.name} — at least in this demo.`;
-    if (/\b(where are you|wru)\b/.test(t)) return "Right here in your browser.";
-    if (/\b(ok|okay|cool|nice|great|awesome)\b/.test(t)) return "👍";
-    if (/\b(lol|haha|lmao)\b/.test(t)) return "😄";
-    if (/\b(sad|tired|sick|bad)\b/.test(t)) return "Sorry to hear that. Hope things get better soon.";
-    if (/\bhelp\b/.test(t)) return "Sure — what do you need help with?";
-    if (/\?\s*$/.test(text.trim())) return "Hmm, good question — let me think about that.";
-    return "Got it. Tell me more?";
-  };
+  const [pending, setPending] = useState(false);
 
-  const send = () => {
+  const send = async () => {
     const text = draft.trim();
-    if (!text) return;
-    setThreads(p => ({ ...p, [activeId]: [...(p[activeId] ?? []), { id: uid(), text, who: "me", ts: Date.now() }] }));
+    if (!text || pending) return;
+    const userMsg: Message = { id: uid(), text, who: "me", ts: Date.now() };
+    const history = [...(threads[activeId] ?? []), userMsg];
+    setThreads(p => ({ ...p, [activeId]: history }));
     setDraft("");
-    const reply = replyFor(text);
-    setTimeout(() => {
+    setPending(true);
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          persona: active.name,
+          messages: history.map(m => ({
+            role: m.who === "me" ? "user" : "assistant",
+            content: m.text,
+          })),
+        }),
+      });
+      const data = await res.json().catch(() => ({} as { text?: string; error?: string }));
+      const reply = res.ok && data.text ? data.text : (data.error ?? "(transmission failed — try again)");
       setThreads(p => ({ ...p, [activeId]: [...(p[activeId] ?? []), { id: uid(), text: reply, who: "them", ts: Date.now() }] }));
-    }, 700);
+    } catch (err) {
+      setThreads(p => ({ ...p, [activeId]: [...(p[activeId] ?? []), { id: uid(), text: "(network error — try again)", who: "them", ts: Date.now() }] }));
+    } finally {
+      setPending(false);
+    }
   };
 
   const onKey = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -439,7 +439,7 @@ function ChatterBox() {
             />
             <button
               onClick={send}
-              disabled={!draft.trim()}
+              disabled={!draft.trim() || pending}
               style={{ background: c.accent, color: c.accentInk, fontFamily: c.mono }}
               className="px-4 sm:px-6 text-[11px] tracking-widest uppercase font-bold flex items-center gap-2 disabled:opacity-30 transition-all hover:translate-x-[-1px] hover:translate-y-[-1px]"
             >
