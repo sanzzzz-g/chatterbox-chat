@@ -439,7 +439,7 @@ function ChatterBox() {
             />
             <button
               onClick={send}
-              disabled={!draft.trim()}
+              disabled={!draft.trim() || pending}
               style={{ background: c.accent, color: c.accentInk, fontFamily: c.mono }}
               className="px-4 sm:px-6 text-[11px] tracking-widest uppercase font-bold flex items-center gap-2 disabled:opacity-30 transition-all hover:translate-x-[-1px] hover:translate-y-[-1px]"
             >
