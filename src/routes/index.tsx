@@ -1,347 +1,185 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
-import { Send, Trash2, MessageSquare, Search, Plus, Settings, Phone, Video, MoreHorizontal, Check, CheckCheck, Palette } from "lucide-react";
+import { ArrowUp, Trash2, Hash, Plus, CornerDownLeft } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "ChatterBox — Modern Messaging" },
-      { name: "description", content: "A polished, themeable messaging workspace." },
-      { property: "og:title", content: "ChatterBox" },
-      { property: "og:description", content: "A polished, themeable messaging workspace." },
+      { title: "CHATTERBOX // Dispatch" },
+      { name: "description", content: "An unconventional brutalist transcript messenger." },
+      { property: "og:title", content: "CHATTERBOX // Dispatch" },
+      { property: "og:description", content: "An unconventional brutalist transcript messenger." },
     ],
   }),
   component: ChatterBox,
 });
 
-type Theme = "light" | "dark" | "midnight" | "hearts" | "bestie" | "unicorn" | "galaxy" | "emerald" | "slate";
+type Theme = "paper" | "terminal" | "blueprint" | "vapor" | "noir" | "riso" | "solar";
 
-type Message = {
-  id: string;
-  text: string;
-  who: "me" | "them";
-  ts: number;
+type Message = { id: string; text: string; who: "me" | "them"; ts: number };
+type Channel = { id: string; name: string; tag: string; preview: string };
+
+type Tokens = {
+  bg: string; bgPattern?: string; ink: string; mute: string; faint: string;
+  card: string; cardMe: string; cardThem: string; cardMeInk: string; cardThemInk: string;
+  border: string; accent: string; accentInk: string; shadow: string;
+  rule: string; tagBg: string; tagInk: string; activeTagBg: string; activeTagInk: string;
+  serif: string; sans: string; mono: string;
+  bigTime: string;
 };
 
-type Conversation = {
-  id: string;
-  name: string;
-  initials: string;
-  accent: string;
-  preview: string;
-  unread?: number;
-  online?: boolean;
+const SANS = "'Manrope', system-ui, sans-serif";
+const SERIF = "'Instrument Serif', 'Times New Roman', serif";
+const MONO = "'JetBrains Mono', 'Courier New', monospace";
+const DISPLAY = "'Sora', system-ui, sans-serif";
+
+const T: Record<Theme, Tokens> = {
+  paper: {
+    bg: "#f0ebe0", ink: "#1a1a1a", mute: "#5a544a", faint: "#a8a195",
+    card: "#fdfaf2", cardMe: "#1a1a1a", cardThem: "#fdfaf2",
+    cardMeInk: "#f0ebe0", cardThemInk: "#1a1a1a",
+    border: "#1a1a1a", accent: "#d4451f", accentInk: "#fdfaf2",
+    shadow: "#1a1a1a", rule: "#1a1a1a",
+    tagBg: "#fdfaf2", tagInk: "#1a1a1a", activeTagBg: "#1a1a1a", activeTagInk: "#f0ebe0",
+    serif: SERIF, sans: SANS, mono: MONO, bigTime: SERIF,
+  },
+  terminal: {
+    bg: "#0a0e0a", ink: "#7fff9f", mute: "#4a8a5f", faint: "#2a5a3a",
+    card: "#0f1410", cardMe: "#7fff9f", cardThem: "#0f1410",
+    cardMeInk: "#0a0e0a", cardThemInk: "#7fff9f",
+    border: "#7fff9f", accent: "#7fff9f", accentInk: "#0a0e0a",
+    shadow: "#1a3a20", rule: "#2a5a3a",
+    tagBg: "transparent", tagInk: "#7fff9f", activeTagBg: "#7fff9f", activeTagInk: "#0a0e0a",
+    serif: MONO, sans: MONO, mono: MONO, bigTime: MONO,
+  },
+  blueprint: {
+    bg: "#0a2540", bgPattern: "blueprint", ink: "#e0f0ff", mute: "#7aa0c4", faint: "#3a5a7a",
+    card: "#0f3258", cardMe: "#ffd84d", cardThem: "#0f3258",
+    cardMeInk: "#0a2540", cardThemInk: "#e0f0ff",
+    border: "#5a8ab8", accent: "#ffd84d", accentInk: "#0a2540",
+    shadow: "#04162a", rule: "#3a5a7a",
+    tagBg: "transparent", tagInk: "#e0f0ff", activeTagBg: "#ffd84d", activeTagInk: "#0a2540",
+    serif: SERIF, sans: SANS, mono: MONO, bigTime: MONO,
+  },
+  vapor: {
+    bg: "linear-gradient(180deg,#1a0a3a 0%,#3a1a5a 50%,#ff6ec7 100%)", ink: "#fef0ff", mute: "#c8a8e8", faint: "#8a6ab0",
+    card: "rgba(255,255,255,0.08)", cardMe: "#ff6ec7", cardThem: "rgba(255,255,255,0.08)",
+    cardMeInk: "#1a0a3a", cardThemInk: "#fef0ff",
+    border: "#ff6ec7", accent: "#7df9ff", accentInk: "#1a0a3a",
+    shadow: "#7df9ff", rule: "#c8a8e8",
+    tagBg: "rgba(255,255,255,0.08)", tagInk: "#fef0ff", activeTagBg: "#7df9ff", activeTagInk: "#1a0a3a",
+    serif: SERIF, sans: SANS, mono: MONO, bigTime: SERIF,
+  },
+  noir: {
+    bg: "#0a0a0a", ink: "#f5f5f5", mute: "#888", faint: "#444",
+    card: "#141414", cardMe: "#f5f5f5", cardThem: "#141414",
+    cardMeInk: "#0a0a0a", cardThemInk: "#f5f5f5",
+    border: "#f5f5f5", accent: "#c9a84c", accentInk: "#0a0a0a",
+    shadow: "#c9a84c", rule: "#333",
+    tagBg: "transparent", tagInk: "#f5f5f5", activeTagBg: "#c9a84c", activeTagInk: "#0a0a0a",
+    serif: SERIF, sans: SANS, mono: MONO, bigTime: SERIF,
+  },
+  riso: {
+    bg: "#fef0e8", ink: "#1a1a3a", mute: "#5a4a6a", faint: "#a89ab0",
+    card: "#ffffff", cardMe: "#ff5722", cardThem: "#ffffff",
+    cardMeInk: "#ffffff", cardThemInk: "#1a1a3a",
+    border: "#1a1a3a", accent: "#3a4ab8", accentInk: "#ffffff",
+    shadow: "#3a4ab8", rule: "#1a1a3a",
+    tagBg: "#ffffff", tagInk: "#1a1a3a", activeTagBg: "#3a4ab8", activeTagInk: "#ffffff",
+    serif: SERIF, sans: SANS, mono: MONO, bigTime: SERIF,
+  },
+  solar: {
+    bg: "#fdf6e3", ink: "#073642", mute: "#586e75", faint: "#93a1a1",
+    card: "#eee8d5", cardMe: "#cb4b16", cardThem: "#eee8d5",
+    cardMeInk: "#fdf6e3", cardThemInk: "#073642",
+    border: "#073642", accent: "#268bd2", accentInk: "#fdf6e3",
+    shadow: "#073642", rule: "#93a1a1",
+    tagBg: "#eee8d5", tagInk: "#073642", activeTagBg: "#268bd2", activeTagInk: "#fdf6e3",
+    serif: SERIF, sans: SANS, mono: MONO, bigTime: SERIF,
+  },
 };
 
-const THEMES: { value: Theme; label: string; swatch: string[] }[] = [
-  { value: "light", label: "Light", swatch: ["#f8fafc", "#3b82f6"] },
-  { value: "dark", label: "Dark", swatch: ["#0a0a0a", "#4f46e5"] },
-  { value: "midnight", label: "Midnight", swatch: ["#0f1b3d", "#3b6fa0"] },
-  { value: "slate", label: "Slate", swatch: ["#2d3748", "#a0aec0"] },
-  { value: "emerald", label: "Emerald", swatch: ["#064e3b", "#c9a84c"] },
-  { value: "hearts", label: "Hearts", swatch: ["#e94560", "#fbe2e2"] },
-  { value: "bestie", label: "Bestie", swatch: ["#e07ba8", "#c4d3f5"] },
-  { value: "unicorn", label: "Unicorn", swatch: ["#f5a8a8", "#c4b8ec"] },
-  { value: "galaxy", label: "Galaxy", swatch: ["#1a1a3a", "#d4b8ec"] },
+const THEME_LIST: { value: Theme; label: string }[] = [
+  { value: "paper", label: "Paper" },
+  { value: "terminal", label: "Terminal" },
+  { value: "blueprint", label: "Blueprint" },
+  { value: "vapor", label: "Vapor" },
+  { value: "noir", label: "Noir" },
+  { value: "riso", label: "Riso" },
+  { value: "solar", label: "Solar" },
 ];
 
-// Each theme defines a full token set. App is fully restyled per theme.
-const T: Record<Theme, Record<string, string>> = {
-  light: {
-    appBg: "#f1f5f9",
-    sidebarBg: "#ffffff",
-    sidebarBorder: "#e2e8f0",
-    panelBg: "#ffffff",
-    chatBg: "#f8fafc",
-    text: "#0f172a",
-    textMuted: "#64748b",
-    textSubtle: "#94a3b8",
-    accent: "#3b82f6",
-    accentText: "#ffffff",
-    bubbleMe: "#3b82f6",
-    bubbleMeText: "#ffffff",
-    bubbleThem: "#ffffff",
-    bubbleThemText: "#0f172a",
-    bubbleThemBorder: "#e2e8f0",
-    inputBg: "#f1f5f9",
-    inputText: "#0f172a",
-    hover: "#f1f5f9",
-    activeItem: "#eff6ff",
-    activeItemText: "#1d4ed8",
-    headerAccent: "#0f172a",
-  },
-  dark: {
-    appBg: "#0a0a0a",
-    sidebarBg: "#111111",
-    sidebarBorder: "#1f1f1f",
-    panelBg: "#0f0f0f",
-    chatBg: "#0a0a0a",
-    text: "#f5f5f5",
-    textMuted: "#a3a3a3",
-    textSubtle: "#737373",
-    accent: "#6366f1",
-    accentText: "#ffffff",
-    bubbleMe: "#4f46e5",
-    bubbleMeText: "#ffffff",
-    bubbleThem: "#1c1c1c",
-    bubbleThemText: "#f5f5f5",
-    bubbleThemBorder: "#262626",
-    inputBg: "#1a1a1a",
-    inputText: "#f5f5f5",
-    hover: "#1a1a1a",
-    activeItem: "#1e1b4b",
-    activeItemText: "#a5b4fc",
-    headerAccent: "#f5f5f5",
-  },
-  midnight: {
-    appBg: "#0a1628",
-    sidebarBg: "#0f1b3d",
-    sidebarBorder: "#1e2f5c",
-    panelBg: "#0c1430",
-    chatBg: "#0a1628",
-    text: "#e8edf3",
-    textMuted: "#94a8c4",
-    textSubtle: "#5a6b8a",
-    accent: "#3b6fa0",
-    accentText: "#ffffff",
-    bubbleMe: "#3b6fa0",
-    bubbleMeText: "#ffffff",
-    bubbleThem: "#1a2847",
-    bubbleThemText: "#e8edf3",
-    bubbleThemBorder: "#243559",
-    inputBg: "#0f1b3d",
-    inputText: "#e8edf3",
-    hover: "#162447",
-    activeItem: "#1e3a5f",
-    activeItemText: "#a4c4e8",
-    headerAccent: "#e8edf3",
-  },
-  slate: {
-    appBg: "#1a202c",
-    sidebarBg: "#2d3748",
-    sidebarBorder: "#4a5568",
-    panelBg: "#252d3a",
-    chatBg: "#1a202c",
-    text: "#f7fafc",
-    textMuted: "#a0aec0",
-    textSubtle: "#718096",
-    accent: "#90cdf4",
-    accentText: "#1a202c",
-    bubbleMe: "#4a5568",
-    bubbleMeText: "#f7fafc",
-    bubbleThem: "#2d3748",
-    bubbleThemText: "#f7fafc",
-    bubbleThemBorder: "#4a5568",
-    inputBg: "#2d3748",
-    inputText: "#f7fafc",
-    hover: "#374151",
-    activeItem: "#4a5568",
-    activeItemText: "#f7fafc",
-    headerAccent: "#f7fafc",
-  },
-  emerald: {
-    appBg: "#022c22",
-    sidebarBg: "#064e3b",
-    sidebarBorder: "#0d7a5f",
-    panelBg: "#053828",
-    chatBg: "#022c22",
-    text: "#f5f0e0",
-    textMuted: "#b8c4a8",
-    textSubtle: "#7a8a6a",
-    accent: "#c9a84c",
-    accentText: "#053828",
-    bubbleMe: "#c9a84c",
-    bubbleMeText: "#053828",
-    bubbleThem: "#0d3a2c",
-    bubbleThemText: "#f5f0e0",
-    bubbleThemBorder: "#0d7a5f",
-    inputBg: "#064e3b",
-    inputText: "#f5f0e0",
-    hover: "#0a4030",
-    activeItem: "#0d7a5f",
-    activeItemText: "#f5f0e0",
-    headerAccent: "#f5f0e0",
-  },
-  hearts: {
-    appBg: "#fef0f2",
-    sidebarBg: "#ffffff",
-    sidebarBorder: "#fbd5dc",
-    panelBg: "#fff5f6",
-    chatBg: "#fef0f2",
-    text: "#3a0d18",
-    textMuted: "#8b4a55",
-    textSubtle: "#c98a95",
-    accent: "#e94560",
-    accentText: "#ffffff",
-    bubbleMe: "#e94560",
-    bubbleMeText: "#ffffff",
-    bubbleThem: "#ffffff",
-    bubbleThemText: "#3a0d18",
-    bubbleThemBorder: "#fbd5dc",
-    inputBg: "#fef0f2",
-    inputText: "#3a0d18",
-    hover: "#fde4e8",
-    activeItem: "#fcdce2",
-    activeItemText: "#a8243e",
-    headerAccent: "#3a0d18",
-  },
-  bestie: {
-    appBg: "#fdf2f8",
-    sidebarBg: "#ffffff",
-    sidebarBorder: "#fbcfe8",
-    panelBg: "#fff5fa",
-    chatBg: "#fdf2f8",
-    text: "#3a1a2a",
-    textMuted: "#8b5a72",
-    textSubtle: "#c99ab0",
-    accent: "#e07ba8",
-    accentText: "#ffffff",
-    bubbleMe: "#e07ba8",
-    bubbleMeText: "#ffffff",
-    bubbleThem: "#ffffff",
-    bubbleThemText: "#3a1a2a",
-    bubbleThemBorder: "#fbcfe8",
-    inputBg: "#fdf2f8",
-    inputText: "#3a1a2a",
-    hover: "#fce7f3",
-    activeItem: "#fbcfe8",
-    activeItemText: "#a8245a",
-    headerAccent: "#3a1a2a",
-  },
-  unicorn: {
-    appBg: "#fdf2f4",
-    sidebarBg: "#ffffff",
-    sidebarBorder: "#f5c4d4",
-    panelBg: "#fff5f8",
-    chatBg: "linear-gradient(135deg, #fde2e4 0%, #fce0ec 50%, #e8dcf5 100%)",
-    text: "#3a1a3a",
-    textMuted: "#8b5a82",
-    textSubtle: "#c99ac0",
-    accent: "#c084fc",
-    accentText: "#ffffff",
-    bubbleMe: "#a855f7",
-    bubbleMeText: "#ffffff",
-    bubbleThem: "#ffffff",
-    bubbleThemText: "#3a1a3a",
-    bubbleThemBorder: "#f5c4d4",
-    inputBg: "#ffffff",
-    inputText: "#3a1a3a",
-    hover: "#fce7f3",
-    activeItem: "#f3e8ff",
-    activeItemText: "#7c3aed",
-    headerAccent: "#3a1a3a",
-  },
-  galaxy: {
-    appBg: "#0f0a1f",
-    sidebarBg: "#1a1235",
-    sidebarBorder: "#2d2050",
-    panelBg: "#15102a",
-    chatBg: "linear-gradient(135deg, #1a1a3a 0%, #2a1f4a 50%, #3a2560 100%)",
-    text: "#e8e0f5",
-    textMuted: "#a89cc8",
-    textSubtle: "#6b5a8a",
-    accent: "#a78bfa",
-    accentText: "#0f0a1f",
-    bubbleMe: "#7c3aed",
-    bubbleMeText: "#ffffff",
-    bubbleThem: "#241a3f",
-    bubbleThemText: "#e8e0f5",
-    bubbleThemBorder: "#3a2860",
-    inputBg: "#1a1235",
-    inputText: "#e8e0f5",
-    hover: "#241a45",
-    activeItem: "#2d2050",
-    activeItemText: "#c4b5fd",
-    headerAccent: "#e8e0f5",
-  },
-};
-
-const STORAGE_KEY = "chatterbox.messages.v2";
-const THEME_KEY = "chatterbox.theme.v2";
-const ACTIVE_KEY = "chatterbox.active.v2";
-
-const CONVERSATIONS: Conversation[] = [
-  { id: "alex", name: "Alex Morgan", initials: "AM", accent: "#3b82f6", preview: "Hello! 👋", unread: 2, online: true },
-  { id: "design", name: "Design Team", initials: "DT", accent: "#a855f7", preview: "Shipping the new theme today.", online: true },
-  { id: "priya", name: "Priya Patel", initials: "PP", accent: "#10b981", preview: "Sounds good — talk later." },
-  { id: "marcus", name: "Marcus Lee", initials: "ML", accent: "#f59e0b", preview: "Sent you the file." },
-  { id: "sam", name: "Sam Rivera", initials: "SR", accent: "#ef4444", preview: "🎉 congrats!" },
+const CHANNELS: Channel[] = [
+  { id: "alex", name: "Alex Morgan", tag: "AM-01", preview: "the mockups feel cleaner" },
+  { id: "design", name: "Design Bureau", tag: "DB-02", preview: "shipping the new theme today" },
+  { id: "priya", name: "Priya Patel", tag: "PP-03", preview: "sounds good — talk later" },
+  { id: "marcus", name: "Marcus Lee", tag: "ML-04", preview: "sent you the file" },
+  { id: "sam", name: "Sam Rivera", tag: "SR-05", preview: "congrats!" },
 ];
 
-const DEMO_THREADS: Record<string, Message[]> = {
+const DEMO: Record<string, Message[]> = {
   alex: [
-    { id: "1", text: "Hey! Did you get a chance to look at the new mockups?", who: "them", ts: Date.now() - 1000 * 60 * 60 * 2 },
-    { id: "2", text: "Yes — the layout feels much cleaner now.", who: "me", ts: Date.now() - 1000 * 60 * 60 * 2 + 60000 },
-    { id: "3", text: "Hello! 👋", who: "them", ts: Date.now() - 1000 * 60 * 5 },
+    { id: "1", text: "Hey — got a minute to look at the new mockups?", who: "them", ts: Date.now() - 7200000 },
+    { id: "2", text: "Yeah. Layout reads much cleaner now. The hierarchy actually works.", who: "me", ts: Date.now() - 7140000 },
+    { id: "3", text: "Hello! 👋", who: "them", ts: Date.now() - 300000 },
   ],
 };
 
+const STORAGE = "chatterbox.v3.threads";
+const THEME_K = "chatterbox.v3.theme";
+const ACTIVE_K = "chatterbox.v3.active";
+
 function uid() { return Math.random().toString(36).slice(2, 10); }
+function pad(n: number) { return String(n).padStart(2, "0"); }
 function fmtTime(ts: number) {
-  return new Date(ts).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-}
-function fmtDay(ts: number) {
   const d = new Date(ts);
-  const today = new Date();
-  if (d.toDateString() === today.toDateString()) return "Today";
-  const yest = new Date(); yest.setDate(yest.getDate() - 1);
-  if (d.toDateString() === yest.toDateString()) return "Yesterday";
-  return d.toLocaleDateString([], { month: "short", day: "numeric" });
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function fmtDate(ts: number) {
+  const d = new Date(ts);
+  return `${d.toLocaleDateString([], { weekday: "short" }).toUpperCase()} · ${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()}`;
 }
 
 function ChatterBox() {
-  const [theme, setTheme] = useState<Theme>("light");
-  const [activeId, setActiveId] = useState<string>("alex");
+  const [theme, setTheme] = useState<Theme>("paper");
+  const [activeId, setActiveId] = useState("alex");
   const [threads, setThreads] = useState<Record<string, Message[]>>({});
   const [draft, setDraft] = useState("");
-  const [search, setSearch] = useState("");
-  const [showThemes, setShowThemes] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     try {
-      const t = localStorage.getItem(THEME_KEY) as Theme | null;
+      const t = localStorage.getItem(THEME_K) as Theme | null;
       if (t && T[t]) setTheme(t);
-      const a = localStorage.getItem(ACTIVE_KEY);
+      const a = localStorage.getItem(ACTIVE_K);
       if (a) setActiveId(a);
-      const raw = localStorage.getItem(STORAGE_KEY);
-      setThreads(raw ? JSON.parse(raw) : DEMO_THREADS);
-    } catch { setThreads(DEMO_THREADS); }
+      const raw = localStorage.getItem(STORAGE);
+      setThreads(raw ? JSON.parse(raw) : DEMO);
+    } catch { setThreads(DEMO); }
   }, []);
 
   useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(threads)); } catch {}
+    try { localStorage.setItem(STORAGE, JSON.stringify(threads)); } catch {}
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [threads, activeId]);
-
-  useEffect(() => { try { localStorage.setItem(THEME_KEY, theme); } catch {} }, [theme]);
-  useEffect(() => { try { localStorage.setItem(ACTIVE_KEY, activeId); } catch {} }, [activeId]);
+  useEffect(() => { try { localStorage.setItem(THEME_K, theme); } catch {} }, [theme]);
+  useEffect(() => { try { localStorage.setItem(ACTIVE_K, activeId); } catch {} }, [activeId]);
 
   const c = T[theme];
-  const active = CONVERSATIONS.find(x => x.id === activeId) ?? CONVERSATIONS[0];
+  const active = CHANNELS.find(x => x.id === activeId) ?? CHANNELS[0];
   const messages = threads[activeId] ?? [];
-
-  const filtered = useMemo(
-    () => CONVERSATIONS.filter(x => x.name.toLowerCase().includes(search.toLowerCase())),
-    [search]
-  );
+  const count = useMemo(() => messages.length, [messages]);
 
   const send = () => {
     const text = draft.trim();
     if (!text) return;
-    setThreads(prev => ({
-      ...prev,
-      [activeId]: [...(prev[activeId] ?? []), { id: uid(), text, who: "me", ts: Date.now() }],
-    }));
+    setThreads(p => ({ ...p, [activeId]: [...(p[activeId] ?? []), { id: uid(), text, who: "me", ts: Date.now() }] }));
     setDraft("");
     setTimeout(() => {
-      const replies = ["Got it! ✨", "Makes sense.", "Tell me more.", "👍", "Sounds great!", "On it."];
+      const replies = ["Noted.", "Copy that.", "Tell me more.", "On it.", "Understood — sending now.", "Good call."];
       const r = replies[Math.floor(Math.random() * replies.length)];
-      setThreads(prev => ({
-        ...prev,
-        [activeId]: [...(prev[activeId] ?? []), { id: uid(), text: r, who: "them", ts: Date.now() }],
-      }));
+      setThreads(p => ({ ...p, [activeId]: [...(p[activeId] ?? []), { id: uid(), text: r, who: "them", ts: Date.now() }] }));
     }, 700);
   };
 
@@ -350,302 +188,252 @@ function ChatterBox() {
   };
 
   const clearChat = () => {
-    if (confirm(`Clear conversation with ${active.name}?`)) {
-      setThreads(prev => ({ ...prev, [activeId]: [] }));
-    }
+    if (confirm(`Clear dispatch ${active.tag}?`)) setThreads(p => ({ ...p, [activeId]: [] }));
   };
+
+  const isDark = ["terminal", "blueprint", "vapor", "noir"].includes(theme);
+  const patternBg = theme === "blueprint"
+    ? "linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px)"
+    : theme === "paper"
+    ? "radial-gradient(rgba(0,0,0,.06) 1px,transparent 1px)"
+    : undefined;
 
   return (
     <div
-      style={{ background: c.appBg, color: c.text, fontFamily: "'Manrope', system-ui, sans-serif" }}
-      className="h-screen w-full flex overflow-hidden"
+      style={{
+        background: c.bg,
+        color: c.ink,
+        fontFamily: c.sans,
+        backgroundImage: patternBg,
+        backgroundSize: theme === "blueprint" ? "24px 24px" : theme === "paper" ? "4px 4px" : undefined,
+      }}
+      className="min-h-screen w-full flex flex-col"
     >
-      {/* Sidebar */}
-      <aside
-        style={{ background: c.sidebarBg, borderColor: c.sidebarBorder }}
-        className="hidden md:flex w-72 lg:w-80 flex-col border-r"
+      {/* MASTHEAD */}
+      <header
+        className="px-4 sm:px-8 pt-6 pb-4 border-b-2"
+        style={{ borderColor: c.rule }}
       >
-        <div className="px-5 py-5 flex items-center justify-between" style={{ borderBottom: `1px solid ${c.sidebarBorder}` }}>
-          <div className="flex items-center gap-2.5">
-            <div
-              className="h-9 w-9 rounded-xl flex items-center justify-center"
-              style={{ background: c.accent, color: c.accentText }}
+        <div className="flex items-end justify-between gap-4 flex-wrap">
+          <div className="flex items-baseline gap-3">
+            <h1
+              style={{ fontFamily: c.bigTime, color: c.ink, letterSpacing: theme === "terminal" ? "0.05em" : "-0.04em" }}
+              className="text-5xl sm:text-7xl font-black leading-none lowercase"
             >
-              <MessageSquare className="h-5 w-5" strokeWidth={2.5} />
-            </div>
-            <div>
-              <h1 style={{ fontFamily: "'Sora', sans-serif", color: c.headerAccent }} className="text-lg font-bold leading-none">ChatterBox</h1>
-              <p style={{ color: c.textSubtle }} className="text-[11px] mt-0.5 font-medium">Workspace</p>
-            </div>
+              chatterbox<span style={{ color: c.accent }}>.</span>
+            </h1>
+            <span style={{ fontFamily: c.mono, color: c.mute }} className="text-[10px] sm:text-xs tracking-widest uppercase">
+              vol·03 / dispatch
+            </span>
           </div>
-          <button
-            className="h-8 w-8 rounded-lg flex items-center justify-center transition"
-            style={{ color: c.textMuted }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = c.hover)}
-            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-            title="New chat"
-          >
-            <Plus className="h-5 w-5" />
-          </button>
-        </div>
-
-        <div className="px-4 py-3">
-          <div
-            className="flex items-center gap-2 rounded-lg px-3 py-2"
-            style={{ background: c.inputBg }}
-          >
-            <Search className="h-4 w-4" style={{ color: c.textSubtle }} />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search conversations"
-              className="bg-transparent flex-1 text-sm focus:outline-none"
-              style={{ color: c.inputText }}
-            />
+          <div style={{ fontFamily: c.mono, color: c.mute }} className="text-[10px] sm:text-xs tracking-widest uppercase">
+            {fmtDate(Date.now())} — ISSUE №{pad(count)}
           </div>
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-2 pb-2">
-          <p className="px-3 py-2 text-[11px] uppercase tracking-wider font-semibold" style={{ color: c.textSubtle }}>
-            Conversations
-          </p>
-          {filtered.map((conv) => {
-            const isActive = conv.id === activeId;
+        {/* THEME PRESETS — stamp row */}
+        <div className="mt-5 flex items-center gap-2 flex-wrap">
+          <span style={{ fontFamily: c.mono, color: c.faint }} className="text-[10px] tracking-widest uppercase mr-1">
+            mode ›
+          </span>
+          {THEME_LIST.map((t) => {
+            const sel = theme === t.value;
             return (
               <button
-                key={conv.id}
-                onClick={() => setActiveId(conv.id)}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 transition text-left"
+                key={t.value}
+                onClick={() => setTheme(t.value)}
                 style={{
-                  background: isActive ? c.activeItem : "transparent",
-                  color: isActive ? c.activeItemText : c.text,
+                  fontFamily: c.mono,
+                  background: sel ? c.activeTagBg : c.tagBg,
+                  color: sel ? c.activeTagInk : c.tagInk,
+                  border: `1.5px solid ${c.border}`,
+                  boxShadow: sel ? `3px 3px 0 ${c.shadow}` : "none",
+                  transform: sel ? "translate(-1px,-1px)" : "none",
                 }}
-                onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = c.hover; }}
-                onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = "transparent"; }}
+                className="text-[10px] tracking-widest uppercase px-2.5 py-1 transition-all"
               >
-                <div className="relative shrink-0">
-                  <div
-                    className="h-10 w-10 rounded-full flex items-center justify-center text-xs font-semibold text-white"
-                    style={{ background: conv.accent }}
-                  >
-                    {conv.initials}
-                  </div>
-                  {conv.online && (
-                    <span
-                      className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full ring-2"
-                      style={{ background: "#10b981", boxShadow: `0 0 0 2px ${isActive ? c.activeItem : c.sidebarBg}` }}
-                    />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-semibold truncate" style={{ fontFamily: "'Sora', sans-serif" }}>{conv.name}</p>
-                    {conv.unread && (
-                      <span
-                        className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
-                        style={{ background: c.accent, color: c.accentText }}
-                      >
-                        {conv.unread}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs truncate mt-0.5" style={{ color: isActive ? c.activeItemText : c.textMuted }}>
-                    {conv.preview}
-                  </p>
-                </div>
+                {t.label}
               </button>
             );
           })}
-        </nav>
-
-        {/* Theme picker */}
-        <div className="px-3 py-3" style={{ borderTop: `1px solid ${c.sidebarBorder}` }}>
-          <button
-            onClick={() => setShowThemes(v => !v)}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition"
-            style={{ color: c.text }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = c.hover)}
-            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-          >
-            <Palette className="h-4 w-4" />
-            <span className="flex-1 text-left">Theme</span>
-            <span className="text-xs capitalize" style={{ color: c.textMuted }}>{theme}</span>
-          </button>
-          {showThemes && (
-            <div className="grid grid-cols-3 gap-2 mt-2 px-1">
-              {THEMES.map((t) => (
-                <button
-                  key={t.value}
-                  onClick={() => setTheme(t.value)}
-                  title={t.label}
-                  className="aspect-square rounded-lg overflow-hidden ring-2 transition"
-                  style={{
-                    background: `linear-gradient(135deg, ${t.swatch[0]} 50%, ${t.swatch[1]} 50%)`,
-                    boxShadow: theme === t.value ? `0 0 0 2px ${c.accent}` : "none",
-                  }}
-                />
-              ))}
-            </div>
-          )}
         </div>
-      </aside>
+      </header>
 
-      {/* Main panel */}
-      <section className="flex-1 flex flex-col min-w-0" style={{ background: c.panelBg }}>
-        {/* Header */}
-        <header
-          className="flex items-center justify-between px-6 py-4 shrink-0"
-          style={{ borderBottom: `1px solid ${c.sidebarBorder}` }}
+      {/* CHANNEL RAIL */}
+      <nav
+        className="px-4 sm:px-8 py-3 border-b-2 flex items-center gap-2 overflow-x-auto"
+        style={{ borderColor: c.rule, fontFamily: c.mono }}
+      >
+        <Hash className="h-3.5 w-3.5 shrink-0" style={{ color: c.mute }} />
+        {CHANNELS.map((ch) => {
+          const sel = ch.id === activeId;
+          return (
+            <button
+              key={ch.id}
+              onClick={() => setActiveId(ch.id)}
+              style={{
+                background: sel ? c.activeTagBg : "transparent",
+                color: sel ? c.activeTagInk : c.ink,
+                border: `1.5px solid ${sel ? c.border : c.rule}`,
+                boxShadow: sel ? `3px 3px 0 ${c.shadow}` : "none",
+                transform: sel ? "translate(-1px,-1px)" : "none",
+              }}
+              className="shrink-0 px-3 py-1.5 text-[11px] tracking-widest uppercase transition-all whitespace-nowrap"
+              title={ch.preview}
+            >
+              {ch.tag} · {ch.name}
+            </button>
+          );
+        })}
+        <button
+          style={{ color: c.mute, border: `1.5px dashed ${c.rule}` }}
+          className="shrink-0 h-7 w-7 flex items-center justify-center"
+          title="New"
         >
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="relative shrink-0">
-              <div
-                className="h-10 w-10 rounded-full flex items-center justify-center text-sm font-semibold text-white"
-                style={{ background: active.accent }}
-              >
-                {active.initials}
-              </div>
-              {active.online && (
-                <span
-                  className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full"
-                  style={{ background: "#10b981", boxShadow: `0 0 0 2px ${c.panelBg}` }}
-                />
-              )}
-            </div>
-            <div className="min-w-0">
-              <h2 style={{ fontFamily: "'Sora', sans-serif", color: c.headerAccent }} className="text-base font-semibold truncate">
-                {active.name}
-              </h2>
-              <p className="text-xs" style={{ color: c.textMuted }}>
-                {active.online ? "Active now" : "Last seen recently"}
+          <Plus className="h-3.5 w-3.5" />
+        </button>
+      </nav>
+
+      {/* TRANSCRIPT */}
+      <main ref={scrollRef} className="flex-1 overflow-y-auto">
+        <div className="max-w-4xl mx-auto px-4 sm:px-10 py-10">
+          {/* dispatch header */}
+          <div className="mb-10 flex items-end justify-between gap-4 border-b-2 pb-4" style={{ borderColor: c.rule }}>
+            <div>
+              <p style={{ fontFamily: c.mono, color: c.mute }} className="text-[10px] tracking-widest uppercase">
+                Open dispatch / {active.tag}
               </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-1">
-            {[Phone, Video, Settings].map((Icon, i) => (
-              <button
-                key={i}
-                className="h-9 w-9 rounded-lg flex items-center justify-center transition"
-                style={{ color: c.textMuted }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = c.hover)}
-                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+              <h2
+                style={{ fontFamily: c.bigTime, color: c.ink, letterSpacing: "-0.02em" }}
+                className="text-4xl sm:text-5xl font-black leading-tight mt-1 lowercase"
               >
-                <Icon className="h-4.5 w-4.5" />
-              </button>
-            ))}
+                to: {active.name}
+              </h2>
+            </div>
             <button
               onClick={clearChat}
-              title="Clear chat"
-              className="h-9 w-9 rounded-lg flex items-center justify-center transition"
-              style={{ color: c.textMuted }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = c.hover)}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+              style={{ fontFamily: c.mono, color: c.mute, border: `1.5px solid ${c.rule}` }}
+              className="text-[10px] tracking-widest uppercase px-2.5 py-1.5 flex items-center gap-1.5 shrink-0"
             >
-              <Trash2 className="h-4 w-4" />
+              <Trash2 className="h-3 w-3" /> purge
             </button>
           </div>
-        </header>
 
-        {/* Chat */}
-        <div
-          ref={scrollRef}
-          className="flex-1 overflow-y-auto px-4 sm:px-8 py-6"
-          style={{ background: c.chatBg }}
-        >
-          {messages.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center" style={{ color: c.textMuted }}>
-              <div
-                className="h-14 w-14 rounded-2xl flex items-center justify-center mb-3"
-                style={{ background: c.hover, color: c.accent }}
-              >
-                <MessageSquare className="h-7 w-7" />
-              </div>
-              <p style={{ fontFamily: "'Sora', sans-serif", color: c.text }} className="font-semibold">No messages yet</p>
-              <p className="text-sm mt-1">Say hi to {active.name} 👋</p>
+          {count === 0 ? (
+            <div className="py-20 text-center">
+              <p style={{ fontFamily: c.bigTime, color: c.mute }} className="text-3xl italic lowercase">— silence on the wire —</p>
+              <p style={{ fontFamily: c.mono, color: c.faint }} className="text-[11px] tracking-widest uppercase mt-3">
+                begin transmission below
+              </p>
             </div>
           ) : (
-            <div className="max-w-3xl mx-auto space-y-2">
-              <div className="flex justify-center my-3">
-                <span
-                  className="text-[11px] font-medium px-3 py-1 rounded-full"
-                  style={{ background: c.hover, color: c.textMuted }}
-                >
-                  {fmtDay(messages[0].ts)}
-                </span>
-              </div>
+            <ol className="space-y-8">
               {messages.map((m, i) => {
-                const prev = messages[i - 1];
-                const grouped = prev && prev.who === m.who && m.ts - prev.ts < 60000 * 5;
+                const isMe = m.who === "me";
                 return (
-                  <div key={m.id} className={`flex ${m.who === "me" ? "justify-end" : "justify-start"} ${grouped ? "mt-1" : "mt-3"}`}>
-                    {m.who === "them" && !grouped && (
+                  <li
+                    key={m.id}
+                    className="grid grid-cols-[auto_1fr] gap-4 sm:gap-6"
+                    style={{ direction: isMe ? "rtl" : "ltr" }}
+                  >
+                    {/* big timestamp gutter */}
+                    <div style={{ direction: "ltr" }} className="text-right shrink-0 pt-1 w-16 sm:w-20">
                       <div
-                        className="h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-semibold text-white mr-2 mt-auto shrink-0"
-                        style={{ background: active.accent }}
+                        style={{ fontFamily: c.bigTime, color: isMe ? c.accent : c.ink, letterSpacing: "-0.04em" }}
+                        className="text-3xl sm:text-4xl font-black leading-none tabular-nums"
                       >
-                        {active.initials}
-                      </div>
-                    )}
-                    {m.who === "them" && grouped && <div className="w-7 mr-2 shrink-0" />}
-                    <div className="flex flex-col" style={{ maxWidth: "70%" }}>
-                      <div
-                        className="px-4 py-2.5 rounded-2xl shadow-sm"
-                        style={{
-                          background: m.who === "me" ? c.bubbleMe : c.bubbleThem,
-                          color: m.who === "me" ? c.bubbleMeText : c.bubbleThemText,
-                          border: m.who === "them" ? `1px solid ${c.bubbleThemBorder}` : "none",
-                          borderTopLeftRadius: m.who === "them" && grouped ? "0.75rem" : undefined,
-                          borderTopRightRadius: m.who === "me" && grouped ? "0.75rem" : undefined,
-                        }}
-                      >
-                        <p className="text-[14.5px] leading-relaxed whitespace-pre-wrap break-words">{m.text}</p>
+                        {fmtTime(m.ts).split(":")[0]}
                       </div>
                       <div
-                        className={`flex items-center gap-1 mt-1 px-1 text-[10.5px] ${m.who === "me" ? "justify-end" : "justify-start"}`}
-                        style={{ color: c.textSubtle }}
+                        style={{ fontFamily: c.mono, color: c.mute }}
+                        className="text-[10px] tracking-widest tabular-nums mt-0.5"
                       >
-                        <span>{fmtTime(m.ts)}</span>
-                        {m.who === "me" && (i === messages.length - 1 ? <CheckCheck className="h-3 w-3" /> : <Check className="h-3 w-3" />)}
+                        :{fmtTime(m.ts).split(":")[1]} · №{pad(i + 1)}
                       </div>
                     </div>
-                  </div>
+
+                    {/* dispatch card */}
+                    <div style={{ direction: "ltr" }} className="min-w-0">
+                      <div
+                        style={{ fontFamily: c.mono, color: c.mute }}
+                        className="text-[10px] tracking-widest uppercase mb-1.5 flex items-center gap-2"
+                      >
+                        <span
+                          className="inline-block h-1.5 w-1.5"
+                          style={{ background: isMe ? c.accent : c.ink }}
+                        />
+                        {isMe ? "you" : active.tag} → {isMe ? active.tag : "you"}
+                      </div>
+                      <div
+                        style={{
+                          background: isMe ? c.cardMe : c.cardThem,
+                          color: isMe ? c.cardMeInk : c.cardThemInk,
+                          border: `2px solid ${c.border}`,
+                          boxShadow: `5px 5px 0 ${c.shadow}`,
+                          transform: `rotate(${(isMe ? -0.25 : 0.35)}deg)`,
+                          backdropFilter: theme === "vapor" ? "blur(8px)" : undefined,
+                        }}
+                        className="px-5 py-4"
+                      >
+                        <p
+                          style={{ fontFamily: c.serif }}
+                          className="text-lg sm:text-xl leading-snug whitespace-pre-wrap break-words"
+                        >
+                          {m.text}
+                        </p>
+                      </div>
+                    </div>
+                  </li>
                 );
               })}
-            </div>
+            </ol>
           )}
         </div>
+      </main>
 
-        {/* Composer */}
-        <footer className="px-4 sm:px-8 py-4 shrink-0" style={{ borderTop: `1px solid ${c.sidebarBorder}`, background: c.panelBg }}>
-          <div className="max-w-3xl mx-auto">
+      {/* COMPOSER — bottom bar with stamped border */}
+      <footer
+        className="px-4 sm:px-8 py-4 border-t-2 shrink-0"
+        style={{ borderColor: c.rule, background: isDark ? "transparent" : c.bg }}
+      >
+        <div className="max-w-4xl mx-auto">
+          <div
+            className="flex items-stretch gap-3"
+            style={{ border: `2px solid ${c.border}`, boxShadow: `5px 5px 0 ${c.shadow}`, background: c.card }}
+          >
             <div
-              className="flex items-end gap-2 rounded-2xl px-3 py-2"
-              style={{ background: c.inputBg, border: `1px solid ${c.sidebarBorder}` }}
+              style={{ fontFamily: c.mono, color: c.mute, borderRight: `1.5px dashed ${c.rule}` }}
+              className="px-3 py-3 text-[10px] tracking-widest uppercase flex flex-col items-start justify-between shrink-0"
             >
-              <textarea
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={onKey}
-                placeholder={`Message ${active.name}…`}
-                rows={1}
-                className="flex-1 bg-transparent resize-none px-2 py-2 text-sm focus:outline-none max-h-40"
-                style={{ color: c.inputText, fontFamily: "'Manrope', sans-serif" }}
-              />
-              <button
-                onClick={send}
-                disabled={!draft.trim()}
-                className="h-9 w-9 rounded-xl flex items-center justify-center transition disabled:opacity-40 shrink-0"
-                style={{ background: c.accent, color: c.accentText }}
-              >
-                <Send className="h-4 w-4" />
-              </button>
+              <span>→ {active.tag}</span>
+              <span style={{ color: c.faint }}>{fmtTime(Date.now())}</span>
             </div>
-            <p className="text-[11px] mt-2 px-2" style={{ color: c.textSubtle }}>
-              Press <kbd className="font-mono">Enter</kbd> to send · <kbd className="font-mono">Shift+Enter</kbd> for newline
-            </p>
+            <textarea
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={onKey}
+              placeholder={`transmit to ${active.name.toLowerCase()}…`}
+              rows={1}
+              style={{ color: c.ink, fontFamily: c.serif, background: "transparent" }}
+              className="flex-1 resize-none px-2 py-3 text-lg focus:outline-none max-h-40 placeholder:italic"
+            />
+            <button
+              onClick={send}
+              disabled={!draft.trim()}
+              style={{ background: c.accent, color: c.accentInk, fontFamily: c.mono }}
+              className="px-4 sm:px-6 text-[11px] tracking-widest uppercase font-bold flex items-center gap-2 disabled:opacity-30 transition-all hover:translate-x-[-1px] hover:translate-y-[-1px]"
+            >
+              <ArrowUp className="h-4 w-4" /> send
+            </button>
           </div>
-        </footer>
-      </section>
+          <div style={{ fontFamily: c.mono, color: c.faint }} className="text-[10px] tracking-widest uppercase mt-2 flex items-center gap-3">
+            <span className="flex items-center gap-1"><CornerDownLeft className="h-3 w-3" /> transmit</span>
+            <span>·</span>
+            <span>shift+↵ newline</span>
+            <span className="ml-auto">end of dispatch</span>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
